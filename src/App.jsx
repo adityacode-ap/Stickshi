@@ -1,121 +1,343 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
+import { useEffect, useMemo, useState } from 'react'
+import { Routes, Route, useNavigate } from 'react-router-dom'
 import './App.css'
+import { products as fallbackProducts, formatINR, shippingFee, freeShippingAbove, codFee } from './data.js'
+import { useCart } from './useCart.js'
+import { api } from './api.js'
+import { CartIcon, MoonIcon, Star, SunIcon } from './ui.jsx'
+import Home from './Home.jsx'
+import Admin from './Admin.jsx'
+import { About, Contact, Report, Sidebar, Team, WhatsAppFloat } from './pages.jsx'
+import AuthPanel from './Auth.jsx'
 
-function App() {
-  const [count, setCount] = useState(0)
+function Header({ count, onCart, onHome, onAdmin, user, onSignOut, onOpenAuth, theme, onToggleTheme }) {
+  return (
+    <header className="navbar">
+      <nav className="navbar-inner">
+        <div className="navbar-spacer" />
+        <button className="logo" onClick={onHome}>Stickshi</button>
+
+        <div className="nav-right">
+          {user ? (
+            <div className="user-menu">
+              <span className="user-name" title={user.email || user.phone}>{user.name}</span>
+              <button className="btn ghost" onClick={onSignOut}>Sign Out</button>
+            </div>
+          ) : (
+            <button className="btn ghost sign-in-btn" onClick={onOpenAuth}>Sign In</button>
+          )}
+          <button className="theme-toggle" aria-label="Toggle dark mode" onClick={onToggleTheme}>
+            {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+          </button>
+          <button className="cart-button" aria-label="Shopping cart" onClick={onCart}>
+            <CartIcon />
+            {count > 0 && <span className="cart-badge">{count}</span>}
+          </button>
+        </div>
+      </nav>
+      <p className="tagline">by Limshin · delivering across India 🇮🇳 · <button className="link" onClick={onAdmin}>Admin</button></p>
+    </header>
+  )
+}
+
+function ProductDetails({ product, onBack, onAdd }) {
+  const [qty, setQty] = useState(1)
+  return (
+    <main className="details">
+      <button className="back" onClick={onBack}>← Back</button>
+      <div className="detail-card">
+        <div className="detail-art" style={{ background: product.bg }}>{product.emoji}</div>
+        <div className="detail-body">
+          <span className="cat">{product.category}</span>
+          <h1>{product.name}</h1>
+          <p>{product.desc}</p>
+          <span className="rating big"><Star />{product.rating}</span>
+          <p className="price big">{formatINR(product.price)}</p>
+          <div className="qty-row">
+            <button onClick={() => setQty((q) => Math.max(1, q - 1))} aria-label="decrease">−</button>
+            <span>{qty}</span>
+            <button onClick={() => setQty((q) => q + 1)} aria-label="increase">+</button>
+          </div>
+          <button className="btn add wide" onClick={() => { onAdd(product.id, qty); onBack() }}>Add {qty} to Cart</button>
+        </div>
+      </div>
+    </main>
+  )
+}
+
+function Cart({ items, setQty, remove, onCheckout, onContinue }) {
+  const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0)
+  const shipping = items.length && subtotal >= freeShippingAbove ? 0 : items.length ? shippingFee : 0
+  if (!items.length)
+    return (
+      <main className="center">
+        <p className="big-emoji">🛒</p>
+        <h2>Your cart is empty</h2>
+        <button className="btn add" onClick={onContinue}>Start shopping</button>
+      </main>
+    )
+  return (
+    <main className="cart">
+      <button className="back" onClick={onContinue}>← Continue shopping</button>
+      <h1>Your Cart</h1>
+      <div className="cart-layout">
+        <div className="cart-items">
+          {items.map((i) => (
+            <div className="cart-item" key={i.id} style={{ background: i.bg }}>
+              <span className="mini-art">{i.emoji}</span>
+              <div className="ci-body">
+                <h3>{i.name}</h3>
+                <span className="price">{formatINR(i.price)}</span>
+                <div className="qty-row">
+                  <button onClick={() => setQty(i.id, i.qty - 1)}>−</button>
+                  <span>{i.qty}</span>
+                  <button onClick={() => setQty(i.id, i.qty + 1)}>+</button>
+                </div>
+              </div>
+              <div className="ci-right">
+                <b>{formatINR(i.price * i.qty)}</b>
+                <button className="remove" onClick={() => remove(i.id)}>Remove</button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <aside className="summary">
+          <h3>Order Summary</h3>
+          <p><span>Subtotal</span><span>{formatINR(subtotal)}</span></p>
+          <p><span>Shipping</span><span>{shipping ? formatINR(shipping) : 'FREE'}</span></p>
+          <p className="total"><span>Total</span><span>{formatINR(subtotal + shipping)}</span></p>
+          <button className="btn add wide" onClick={onCheckout}>Checkout</button>
+        </aside>
+      </div>
+    </main>
+  )
+}
+
+function cartWithData(cart, items) {
+  return cart.map((i) => {
+    const p = items.find((x) => x.id === i.id)
+    return p ? { ...i, ...p } : { ...i, name: '—', price: 0, emoji: '🫧', bg: '#eee' }
+  })
+}
+
+function Checkout({ cart, products, onPlaceOrder, onBack }) {
+  const items = cartWithData(cart, products)
+  const [form, setForm] = useState({ name: '', email: '', phone: '', address: '', city: '', state: '', pincode: '' })
+  const [pay, setPay] = useState('UPI')
+  const [placing, setPlacing] = useState(false)
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
+
+  const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0)
+  const shipping = subtotal >= freeShippingAbove ? 0 : shippingFee
+  const cod = pay === 'COD' ? codFee : 0
+  const total = subtotal + shipping + cod
+
+  const valid =
+    form.name && form.email.includes('@') && /^\d{10}$/.test(form.phone) && form.address &&
+    form.city && form.state && /^\d{6}$/.test(form.pincode)
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
+    <main className="checkout">
+      <button className="back" onClick={onBack}>← Back to cart</button>
+      <h1>Checkout</h1>
+      <div className="cart-layout">
+        <section className="form">
+          <h3>Delivery Details</h3>
+          <input placeholder="Full name" value={form.name} onChange={set('name')} />
+          <input placeholder="Email" type="email" value={form.email} onChange={set('email')} />
+          <input placeholder="Phone (10 digits)" value={form.phone} onChange={set('phone')} />
+          <textarea placeholder="Address (house no, street, area)" value={form.address} onChange={set('address')} />
+          <div className="row2">
+            <input placeholder="City" value={form.city} onChange={set('city')} />
+            <input placeholder="State" value={form.state} onChange={set('state')} />
+          </div>
+          <input placeholder="Pincode (6 digits)" value={form.pincode} onChange={set('pincode')} />
+          <h3>Payment Method</h3>
+          <div className="pay-options">
+            {['UPI', 'Card', 'COD'].map((m) => (
+              <button key={m} className={`chip ${pay === m ? 'active' : ''}`} onClick={() => setPay(m)}>{m}</button>
+            ))}
+          </div>
+        </section>
+        <aside className="summary">
+          <h3>Order Summary</h3>
+          {items.map((i) => (
+            <p key={i.id} className="line"><span>{i.name} × {i.qty}</span><span>{formatINR(i.price * i.qty)}</span></p>
+          ))}
+          <hr />
+          <p><span>Subtotal</span><span>{formatINR(subtotal)}</span></p>
+          <p><span>Shipping</span><span>{shipping ? formatINR(shipping) : 'FREE'}</span></p>
+          {cod > 0 && <p><span>COD fee</span><span>{formatINR(cod)}</span></p>}
+          <p className="total"><span>Total</span><span>{formatINR(total)}</span></p>
+          <button
+            className="btn add wide"
+            disabled={!valid || placing}
+            onClick={async () => {
+              setPlacing(true)
+              try {
+                await onPlaceOrder({ ...form, pay, total, count: items.length })
+              } catch {
+                setPlacing(false)
+              }
+            }}
+          >
+            {!valid ? 'Fill all details' : placing ? 'Placing order…' : `Pay ${formatINR(total)}`}
+          </button>
+        </aside>
+      </div>
+    </main>
+  )
+}
+
+function Success({ order, onHome }) {
+  return (
+    <main className="center">
+      <p className="big-emoji">🎉</p>
+      <h2>Order placed!</h2>
+      <p>Order ID: <b>STK{order.id}</b></p>
+      <p>Delivering {order.count} {order.count === 1 ? 'item' : 'items'} to {order.name}, {order.city} · {order.pincode}</p>
+      <p className="total">Total: {formatINR(order.total)} via {order.pay}</p>
+      <button className="btn add" onClick={onHome}>Back to shop</button>
+    </main>
+  )
+}
+
+function App() {
+  const cart = useCart()
+  const navigate = useNavigate()
+  const [products, setProducts] = useState([])
+  const [view, setView] = useState({ name: 'home' })
+  const [user, setUser] = useState(null)
+  const [userToken, setUserToken] = useState(() => localStorage.getItem('stickshi-user') || '')
+  const [showAuth, setShowAuth] = useState(false)
+  const [theme, setTheme] = useState(() => localStorage.getItem('stickshi-theme') || 'light')
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    localStorage.setItem('stickshi-theme', theme)
+  }, [theme])
+
+  useEffect(() => {
+    api('/products')
+      .then((d) => setProducts(d.products))
+      .catch(() => setProducts(fallbackProducts))
+  }, [])
+
+  useEffect(() => {
+    if (!userToken) return
+    api('/auth/me', { token: userToken })
+      .then((d) => setUser(d.user))
+      .catch(() => { setUserToken(''); localStorage.removeItem('stickshi-user') })
+  }, [userToken])
+
+  const go = (v) => { setView(v); navigate('/'); window.scrollTo(0, 0) }
+  const items = useMemo(() => cartWithData(cart.items, products), [cart.items, products])
+  const onAdd = (id, qty = 1) => { cart.add(id, qty) }
+
+  const login = (token, info) => { setUserToken(token); setUser(info) }
+  const logout = () => {
+    if (userToken) api('/auth/logout', { method: 'POST', token: userToken }).catch(() => {})
+    setUserToken(''); setUser(null)
+  }
+
+  const store = view.name === 'admin'
+    ? <Admin onExit={() => go({ name: 'home' })} onUpdateProducts={setProducts} />
+    : view.name === 'product'
+    ? <ProductDetails product={view.product} onBack={() => go({ name: 'home' })} onAdd={onAdd} />
+    : view.name === 'cart'
+      ? <Cart items={items} setQty={cart.setQty} remove={cart.remove} onCheckout={() => go({ name: 'checkout' })} onContinue={() => go({ name: 'home' })} />
+      : view.name === 'checkout'
+        ? <Checkout cart={cart.items} products={products} onBack={() => go({ name: 'cart' })} onPlaceOrder={async (o) => {
+            try {
+              const saved = await api('/orders', { method: 'POST', body: { ...o, items: items.map((i) => ({ name: i.name, emoji: i.emoji, qty: i.qty, price: i.price })) } })
+              o.id = saved.id
+            } catch {
+              // order still shown locally if backend is unreachable
+            }
+            cart.clear()
+            go({ name: 'success', order: o })
+          }} />
+        : view.name === 'success'
+          ? <Success order={view.order} onHome={() => go({ name: 'home' })} />
+          : <Home products={products} onOpen={(p) => go({ name: 'product', product: p })} onAdd={onAdd} userToken={userToken} onOpenAuth={() => setShowAuth(true)} />
+
+  return (
+    <div className="app">
+      <Header count={cart.count} onCart={() => go({ name: 'cart' })} onHome={() => go({ name: 'home' })} onAdmin={() => go({ name: 'admin' })} user={user} onSignOut={logout} onOpenAuth={() => setShowAuth(true)} theme={theme} onToggleTheme={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))} />
+      <div className="layout">
+        <Sidebar />
+        <Routes>
+          <Route path="/about" element={<div className="content"><About /></div>} />
+          <Route path="/contact" element={<div className="content"><Contact /></div>} />
+          <Route path="/team" element={<div className="content"><Team /></div>} />
+          <Route path="/report" element={<div className="content"><Report /></div>} />
+          <Route path="/" element={<div className="content">{store}</div>} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </div>
+      <WhatsAppFloat />
+      <CookieConsent loggedIn={!!user} />
+      {showAuth && <AuthPanel onClose={() => setShowAuth(false)} onAuth={login} />}
+    </div>
+  )
+}
+
+function NotFound() {
+  const navigate = useNavigate()
+  const go = (path) => { navigate(path); window.scrollTo(0, 0) }
+  return (
+    <div className="content">
+      <section className="notfound">
+        <div className="nf-sticker" aria-hidden="true">
+          <div className="nf-tape nf-tape-1" />
+          <div className="nf-tape nf-tape-2" />
+          <div className="nf-num">4</div>
+          <div className="nf-num hl nf-rip">0</div>
+          <div className="nf-num">4</div>
         </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
+        <p className="nf-kicker">ERROR 404</p>
+        <h1 className="nf-title">This sticker got lost in the mail.</h1>
+        <p className="nf-sub">The page you're after doesn't exist — but there are plenty of stickers that do.</p>
+        <div className="nf-actions">
+          <button className="btn add" onClick={() => go('/')}>Back to the shop</button>
+          <button className="btn ghost" onClick={() => go('/about')}>About Stickshi</button>
         </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
       </section>
+      <div className="nf-ghost" aria-hidden="true">LOST&nbsp;&nbsp;IN&nbsp;&nbsp;TRANSIT&nbsp;&nbsp;·&nbsp;&nbsp;LOST&nbsp;&nbsp;IN&nbsp;&nbsp;TRANSIT&nbsp;&nbsp;·&nbsp;&nbsp;</div>
+    </div>
+  )
+}
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+function CookieConsent({ loggedIn }) {
+  const [state, setState] = useState(() => (loggedIn && localStorage.getItem('stickshi-cookies') ? 'done' : 'ask'))
+  const [thanks, setThanks] = useState(false)
+  const eat = (kind) => {
+    if (loggedIn) localStorage.setItem('stickshi-cookies', kind)
+    setThanks(true)
+  }
+  useEffect(() => {
+    if (!thanks) return undefined
+    const t = setTimeout(() => setState('done'), 4200)
+    return () => clearTimeout(t)
+  }, [thanks])
+  if (state === 'done') return null
+  return (
+    <div className="cookie-bar" role="dialog" aria-label="Cookie consent">
+      {thanks ? (
+        <p className="cookie-thanks">Thank you for accepting cookies. My grandfather loves you <span className="cookie-heart" aria-hidden="true">❤</span></p>
+      ) : (
+        <>
+          <div className="cookie-text">
+            <strong className="cookie-title">Cookies for the road? <span className="cookie-heart" aria-hidden="true">❤</span></strong>
+            <p>In loving memory of my grandpa, this little shop uses cookies to remember your cart and keep things smooth. Choose how many you'd like to munch.</p>
+          </div>
+          <div className="cookie-actions">
+            <button className="btn add" onClick={() => eat('all')}>EAT ALL</button>
+            <button className="btn ghost" onClick={() => eat('some')}>EAT SOME</button>
+          </div>
+        </>
+      )}
+    </div>
   )
 }
 

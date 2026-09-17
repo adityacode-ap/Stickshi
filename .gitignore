@@ -12,6 +12,18 @@ dist
 dist-ssr
 *.local
 
+# Secrets
+.env
+.env.local
+.env.production
+
+# Server runtime data (hashed passwords, orders, comments)
+server/users.json
+server/comments.json
+server/orders.json
+server/products.json
+server/admins.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
