@@ -106,7 +106,7 @@ export default function Home({ products, onOpen, onAdd, userToken, onOpenAuth, o
         <div className="hero-text">
           <h1>{heroMarkup}</h1>
           {hero.scheme !== '' && <h4 className='Scheme'>{hero.scheme ?? 'Follow our Instagram page for an extra 10% discount on next order!'}</h4>}
-          <p>{hero.subtitle ?? 'Premium stickers for your laptop, phone, bottles &amp; more — made by Limshin, delivered across India.'}</p>
+          <p>{hero.subtitle ?? 'Premium stickers for your laptop, phone, bottles &amp; more — made by Limshin, delivered across India with Free of cost inside Assam!.'}</p>
           <div className="hero-cta">
             <button className="btn dark" onClick={() => scrollTo('shop')}>{hero.shopCta ?? 'Shop Now'}</button>
             <button className="btn ghost" onClick={() => scrollTo('collections')}>{hero.exploreCta ?? 'Explore Collections'}</button>
@@ -188,7 +188,7 @@ export default function Home({ products, onOpen, onAdd, userToken, onOpenAuth, o
       <section className="section">
         <h2 className="sec-title">Why Stickshi?</h2>
         <div className="why-grid">
-          <div className="why-card"><span>🚚</span><b>Pan-India Delivery</b><small>Free shipping over {formatINR(freeShippingAbove)}</small></div>
+          <div className="why-card"><span>🚚</span><b>All India Delivery and Assam Delivary Free</b><small>Free shipping over {formatINR(freeShippingAbove)}</small></div>
           <div className="why-card"><span>✨</span><b>Premium Quality</b><small>Waterproof matte vinyl</small></div>
           <div className="why-card"><span>💰</span><b>Affordable Prices</b><small>Starting at {formatINR(45)}</small></div>
           <div className="why-card"><span>🎨</span><b>Unique Designs</b><small>Original art by Limshin</small></div>
