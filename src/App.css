@@ -826,6 +826,28 @@ font-size: 20px;
   .admin-bar { flex-wrap: wrap; }
   .wa-float { right: calc(14px + env(safe-area-inset-right)); bottom: calc(14px + env(safe-area-inset-bottom)); }
   .cookie-bar { left: calc(12px + env(safe-area-inset-left)); right: calc(12px + env(safe-area-inset-right)); bottom: calc(12px + env(safe-area-inset-bottom)); }
+  .hero { padding: 36px 18px; gap: 20px; }
+  .hero-poster { display: none; }
+  .hero-text h1 { font-size: 1.8rem; }
+  .hero-cta { flex-direction: column; }
+  .hero-cta .btn { width: 100%; text-align: center; }
+  .row2 { grid-template-columns: 1fr; }
+  .cart-layout { grid-template-columns: 1fr; }
+  .summary { position: static; }
+  .detail-card { grid-template-columns: 1fr; }
+  .detail-art { border-right: none; border-bottom: 2px dashed var(--line); max-height: 260px; overflow: hidden; }
+  .navbar-inner { gap: 6px; padding: 0 12px; }
+  .logo { font-size: 1.25rem; }
+  .sign-in-btn { padding: 6px 12px; font-size: .8rem; }
+  .chip { padding: 7px 12px; font-size: .8rem; }
+  .cats-row { gap: 8px; }
+  .cat-card { padding: 10px 12px; font-size: .82rem; }
+  .cat-emoji { font-size: 1.3rem; }
+  .pay-options { flex-direction: column; }
+  .pay-options .chip { text-align: center; }
+  .form input, .form textarea { font-size: 16px; }
+  .controls { padding: 0 12px 12px; }
+  .filter-row { flex-direction: column; align-items: flex-start; gap: 8px; }
 }
 
 @media (hover: none) {
@@ -839,7 +861,6 @@ font-size: 20px;
 @media (max-width: 480px) {
   .user-name { display: none; }
   .navbar-inner { grid-template-columns: auto auto 1fr; }
-  .row2 { grid-template-columns: 1fr; }
 }
 
 .maintenance-bar {
