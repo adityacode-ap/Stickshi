@@ -4,17 +4,18 @@ import fs from 'node:fs'
 import https from 'node:https'
 import crypto from 'node:crypto'
 import { fileURLToPath } from 'node:url'
-import { getAdmin, getComments, getOrders, getProducts, getUsers, saveComments, saveOrder, saveProducts, saveUsers } from './db.js'
+import { getAdmin, getComments, getConfig, getOrders, getProducts, getUsers, saveComments, saveConfig, saveOrder, saveProducts, saveUsers } from './db.js'
 import { createToken, hashPassword, verifyPassword } from './auth.js'
 
 try { process.loadEnvFile() } catch { void 0 }
 
 const dir = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
-app.use(express.json())
+app.use(express.json({ limit: '1mb' }))
 
 const adminSessions = new Map()
 const userSessions = new Map()
+const devSessions = new Map()
 const attempts = new Map()
 const MAX_ATTEMPTS = 3
 const LOCK_MS = 15 * 60 * 1000
@@ -115,6 +116,41 @@ app.post('/api/logout', adminAuth, (req, res) => {
 
 app.get('/api/me', adminAuth, (req, res) => res.json({ email: req.admin.email }))
 
+app.post('/api/dev/login', rateLimit({ key: 'dev-login', limit: 5, message: 'Too many attempts. Try again in a minute.' }), (req, res) => {
+  const { email, password } = req.body || {}
+  if (!email || !password) return res.status(400).json({ error: 'Email and password required' })
+  const devEmail = process.env.DEV_EMAIL || 'dev@stickshi.in'
+  const devCred = hashPassword(process.env.DEV_PASSWORD || 'Dev@12345')
+  if (isLocked('dev')) return res.status(429).json({ error: `Too many failed attempts. Locked for ${minsLeft('dev')} min` })
+  if (String(email).toLowerCase() !== String(devEmail).toLowerCase() || !verifyPassword(String(password), devCred.salt, devCred.hash)) {
+    recordFail('dev')
+    return res.status(401).json({ error: 'Invalid developer credentials' })
+  }
+  attempts.delete('dev')
+  const token = createToken()
+  devSessions.set(token, { email: devEmail, until: now() + TOKEN_TTL })
+  res.json({ token, email: devEmail })
+})
+
+function devAuth(req, res, next) {
+  const token = tokenFrom(req)
+  const s = devSessions.get(token)
+  if (!s || s.until < now()) {
+    devSessions.delete(token)
+    return res.status(401).json({ error: 'Developer session expired' })
+  }
+  req.dev = s
+  req.devToken = token
+  next()
+}
+
+app.post('/api/dev/logout', devAuth, (req, res) => {
+  devSessions.delete(req.devToken)
+  res.json({ ok: true })
+})
+
+app.get('/api/dev/me', devAuth, (req, res) => res.json({ email: req.dev.email }))
+
 function userAuth(req, res, next) {
   const token = tokenFrom(req)
   const s = userSessions.get(token)
@@ -159,6 +195,26 @@ function ownerOrAdmin(req, res, next) {
   return res.status(403).json({ error: 'You are not allowed to do that' })
 }
 
+function requireSiteOpen(req, res, next) {
+  if (getConfig().siteOpen !== false) return next()
+  res.status(503).json({ error: 'The shop is temporarily closed. Check back soon!' })
+}
+
+function requireCommentsEnabled(req, res, next) {
+  if (getConfig().commentsEnabled !== false) return next()
+  res.status(403).json({ error: 'Comments are turned off right now' })
+}
+
+function blockAccount(req, res, next) {
+  if (!req.user?.userId) return next()
+  const u = getUsers().find((x) => x.id === req.user.userId)
+  if (u && ['blocked', 'blacklisted'].includes(u.status)) {
+    userSessions.delete(req.userToken)
+    return res.status(403).json({ error: 'Your account has been blocked. Contact Stickshi on WhatsApp for help.' })
+  }
+  next()
+}
+
 const publicUser = (u) => ({ id: u.id, name: u.name, phone: u.phone, email: u.email })
 
 
@@ -188,13 +244,16 @@ app.post('/api/auth/login', rateLimit({ key: 'user-login', limit: 10, message: '
   if (!phone || !password) return res.status(400).json({ error: 'Phone and password are required' })
   const key = `user:${phone}`
   if (isLocked(key)) return res.status(429).json({ error: `Too many failed attempts. Locked for ${minsLeft(key)} min` })
-  const user = getUsers().find((u) => u.phone === String(phone))
+const user = getUsers().find((u) => u.phone === String(phone))
   if (!user || user.authMethod !== 'phone' || !verifyPassword(String(password), user.salt, user.hash)) {
     recordFail(key)
     const msg = isLocked(key)
       ? `Too many failed attempts. Locked for ${minsLeft(key)} min`
       : 'Invalid phone number or password'
     return res.status(401).json({ error: msg })
+  }
+  if (user.status === 'blocked' || user.status === 'blacklisted') {
+    return res.status(403).json({ error: 'Your account has been blocked. Contact Stickshi on WhatsApp for help.' })
   }
   attempts.delete(key)
   const token = createToken()
@@ -252,7 +311,10 @@ app.post('/api/auth/google', rateLimit({ key: 'google-auth', limit: 10, message:
     const email = payload.email
     const name = payload.name || (email ? email.split('@')[0] : 'Google User')
     const users = getUsers()
-    let user = users.find((u) => u.googleId === googleId) || (email && users.find((u) => u.email === email))
+let user = users.find((u) => u.googleId === googleId) || (email && users.find((u) => u.email === email))
+    if (user && (user.status === 'blocked' || user.status === 'blacklisted')) {
+      return res.status(403).json({ error: 'Your account has been blocked. Contact Stickshi on WhatsApp for help.' })
+    }
     if (!user) {
       user = {
         id: Date.now(),
@@ -324,7 +386,7 @@ app.get('/api/comments', (_req, res) => {
   res.json({ comments })
 })
 
-app.post('/api/comments', rateLimit({ key: 'comments', limit: 5, message: 'You are commenting too fast. Try again in a minute.' }), userAuth, (req, res) => {
+app.post('/api/comments', requireCommentsEnabled, rateLimit({ key: 'comments', limit: 5, message: 'You are commenting too fast. Try again in a minute.' }), userAuth, blockAccount, (req, res) => {
   const text = String(req.body?.text || '').trim()
   if (!text) return res.status(400).json({ error: 'Comment text required' })
   const comment = {
@@ -382,7 +444,7 @@ app.delete('/api/products/:id', adminAuth, (req, res) => {
 })
 
 
-app.post('/api/orders', optionalUser, rateLimit({ key: 'orders', limit: 10, message: 'Too many orders. Try again in a minute.' }), (req, res) => {
+app.post('/api/orders', requireSiteOpen, optionalUser, blockAccount, rateLimit({ key: 'orders', limit: 10, message: 'Too many orders. Try again in a minute.' }), (req, res) => {
   const order = { id: Date.now() % 1000000, placedAt: new Date().toISOString(), ...req.body, userId: req.user?.userId ?? null }
   saveOrder(order)
   res.json(order)
@@ -393,10 +455,87 @@ app.get('/api/orders/me', userAuth, (req, res) => {
   res.json({ orders })
 })
 
-app.get('/api/orders', adminAuth, (_req, res) => res.json({ orders: getOrders() }))
+app.get('/api/orders', adminAuth, (_req, res) => {
+  const users = getUsers()
+  const orders = getOrders().map((o) => {
+    if (o.userId == null) return o
+    const u = users.find((x) => x.id === o.userId)
+    return u ? { ...o, customerPhone: u.phone } : o
+  })
+  res.json({ orders })
+})
+
+app.get('/api/admin/users', adminAuth, (_req, res) => {
+  const users = getUsers().map((u) => ({
+    id: u.id,
+    name: u.name,
+    phone: u.phone,
+    authMethod: u.authMethod || 'phone',
+    status: u.status || 'active',
+    createdAt: u.createdAt,
+  }))
+  res.json({ users })
+})
+
+const publicStatus = (u) => ({ id: u.id, name: u.name, phone: u.phone, email: u.email || null, googleId: u.googleId || null, authMethod: u.authMethod || 'phone', status: u.status || 'active', createdAt: u.createdAt })
+
+app.get('/api/dev/users', devAuth, (_req, res) => {
+  const users = getUsers().map((u) => ({
+    ...publicStatus(u),
+    password: u.hash ? { hash: u.hash, salt: u.salt } : null,
+  }))
+  res.json({ users })
+})
+
+app.post('/api/dev/users/:id/:action', devAuth, (req, res) => {
+  const id = +req.params.id
+  const action = req.params.action
+  if (!['block', 'unblock', 'blacklist'].includes(action)) return res.status(400).json({ error: 'Unknown action' })
+  const status = action === 'block' ? 'blocked' : action === 'blacklist' ? 'blacklisted' : 'active'
+  const users = getUsers()
+  const user = users.find((u) => u.id === id)
+  if (!user) return res.status(404).json({ error: 'User not found' })
+  user.status = status
+  saveUsers(users)
+  res.json({ ok: true, user: { ...publicStatus(user), password: user.hash ? { hash: user.hash, salt: user.salt } : null } })
+})
+
+app.delete('/api/dev/users/:id', devAuth, (req, res) => {
+  const id = +req.params.id
+  const before = getUsers().length
+  saveUsers(getUsers().filter((u) => u.id !== id))
+  if (getUsers().length === before) return res.status(404).json({ error: 'User not found' })
+  res.json({ ok: true })
+})
+
+app.get('/api/dev/settings', devAuth, (_req, res) => res.json({ config: getConfig() }))
+
+app.put('/api/dev/settings', devAuth, (req, res) => {
+  const body = req.body || {}
+  const current = getConfig()
+  const next = {
+    siteOpen: typeof body.siteOpen === 'boolean' ? body.siteOpen : current.siteOpen,
+    commentsEnabled: typeof body.commentsEnabled === 'boolean' ? body.commentsEnabled : current.commentsEnabled,
+    announcement: body.announcement || current.announcement,
+    hero: body.hero ? { ...current.hero, ...body.hero } : current.hero,
+    footer: body.footer ? { ...current.footer, ...body.footer } : current.footer,
+  }
+  saveConfig(next)
+  res.json({ config: getConfig() })
+})
 
 
-app.get('/api/config', (_req, res) => res.json({ googleClientId: process.env.GOOGLE_CLIENT_ID || '' }))
+app.get('/api/config', (_req, res) => {
+  const cfg = getConfig()
+  res.json({
+    googleClientId: process.env.GOOGLE_CLIENT_ID || '',
+    siteOpen: cfg.siteOpen !== false,
+    commentsEnabled: cfg.commentsEnabled !== false,
+    announcement: cfg.announcement || { enabled: false, title: '', text: '' },
+    hero: cfg.hero || {},
+    footer: cfg.footer || {},
+  })
+})
 
 
 const dist = path.join(dir, '..', 'dist')

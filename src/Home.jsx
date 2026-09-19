@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
-import { categoryIcons, categories, formatINR, freeShippingAbove, reviews, vibes } from './data.js'
+import { useEffect, useMemo, useState } from 'react'
+import { categoryIcons, categories, formatINR, freeShippingAbove, reviews, vibes } from './Javascripts/data.js'
 import { Star } from './ui.jsx'
 import Comments from './Comments.jsx'
 import animePoster from './assets/anime-poster.png'
+import { api } from './Javascripts/api.js'
 
 const scrollTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
 
@@ -11,7 +12,7 @@ function ProductCard({ p, onOpen, onAdd }) {
     <article className="card" style={{ background: p.bg }}>
       {p.bestseller && <span className="badge">Bestseller</span>}
       {p.isNew && <span className="badge new">New</span>}
-      <button className="sticker-art" onClick={() => onOpen(p)} aria-label={p.name}>{p.emoji}</button>
+      <button className="sticker-art" onClick={() => onOpen(p)} aria-label={p.name}>{p.image ? <img src={p.image} alt={p.name} className="sticker-img" /> : p.emoji}</button>
       <div className="card-body">
         <h3 onClick={() => onOpen(p)}>{p.name}</h3>
         <span className="cat">{p.category}</span>
@@ -27,12 +28,33 @@ function ProductCard({ p, onOpen, onAdd }) {
 
 
 
-export default function Home({ products, onOpen, onAdd, userToken, onOpenAuth }) {
+export default function Home({ products, onOpen, onAdd, userToken, onOpenAuth, onCreateCustom }) {
   const [query, setQuery] = useState('')
   const [cat, setCat] = useState('All')
   const [vibe, setVibe] = useState(null)
   const [sort, setSort] = useState('popular')
-  const [maxPrice, setMaxPrice] = useState(80)
+  const [maxPrice, setMaxPrice] = useState(100)
+  const [ui, setUi] = useState(null)
+
+  useEffect(() => {
+    api('/config').then(setUi).catch(() => {})
+  }, [])
+
+  const hero = ui?.hero || {}
+  const footer = ui?.footer || {}
+  const announcement = ui?.announcement || {}
+  const siteOpen = ui ? ui.siteOpen !== false : true
+  const commentsEnabled = ui ? ui.commentsEnabled !== false : true
+
+  const heroMarkup = (() => {
+    const t = hero.title
+    const h = hero.highlight
+    if (h && t && t.includes(h)) {
+      const i = t.indexOf(h)
+      return <>{t.slice(0, i)}<span className="hl">{h}</span>{t.slice(i + h.length)}</>
+    }
+    return <>{t && t || 'Have Some '}{h && <span className="hl">{h}</span>}</>
+  })()
 
   const list = useMemo(() => {
     let l = products.filter(
@@ -48,7 +70,7 @@ export default function Home({ products, onOpen, onAdd, userToken, onOpenAuth })
     return l
   }, [products, query, cat, vibe, sort, maxPrice])
 
-  const filtered = query || cat !== 'All' || vibe || maxPrice < 80
+  const filtered = query || cat !== 'All' || vibe || maxPrice < 100
   const gridProducts = filtered ? list : list.filter((p) => p.bestseller)
   const fresh = products.filter((p) => p.isNew)
   const activeVibe = vibe && vibes.find((v) => v.name === vibe)
@@ -59,20 +81,35 @@ export default function Home({ products, onOpen, onAdd, userToken, onOpenAuth })
       ? 'Results'
       : '🔥 Trending Now'
 
-  const pickCat = (c) => { setCat(c); setVibe(null); setTimeout(() => scrollTo('shop'), 0) }
+  const pickCat = (c) => { setCat(c); setVibe(null); setMaxPrice(100); setTimeout(() => scrollTo('shop'), 0) }
 
-  const clearFilters = () => { setCat('All'); setVibe(null); setQuery(''); setMaxPrice(80) }
+  const clearFilters = () => { setCat('All'); setVibe(null); setQuery(''); setMaxPrice(100) }
 
   return (
     <main className="home">
+      {!siteOpen && (
+        <div className="maintenance-bar" role="status">
+          🔧 The shop is temporarily closed — no new orders right now, but feel free to look around!
+        </div>
+      )}
+      {announcement.enabled && announcement.text && (
+        <section className="announcement-bar" role="status">
+          <span className="announce-emoji" aria-hidden="true">📢</span>
+          <div className="announce-text">
+            <b>{announcement.title || 'Announcement'}</b>
+            <p>{announcement.text}</p>
+          </div>
+        </section>
+      )}
+
       <section className="hero">
         <div className="hero-text">
-          <h1>Have Some <span className="hl">STICKSHIsss!</span></h1>
-          <h4 className='Scheme'>Follow our Instagram page for an extra 10% discount on next order!</h4>
-          <p>Premium stickers for your laptop, phone, bottles &amp; more — made by Limshin, delivered across India.</p>
+          <h1>{heroMarkup}</h1>
+          {hero.scheme !== '' && <h4 className='Scheme'>{hero.scheme ?? 'Follow our Instagram page for an extra 10% discount on next order!'}</h4>}
+          <p>{hero.subtitle ?? 'Premium stickers for your laptop, phone, bottles &amp; more — made by Limshin, delivered across India.'}</p>
           <div className="hero-cta">
-            <button className="btn dark" onClick={() => scrollTo('shop')}>Shop Now</button>
-            <button className="btn ghost" onClick={() => scrollTo('collections')}>Explore Collections</button>
+            <button className="btn dark" onClick={() => scrollTo('shop')}>{hero.shopCta ?? 'Shop Now'}</button>
+            <button className="btn ghost" onClick={() => scrollTo('collections')}>{hero.exploreCta ?? 'Explore Collections'}</button>
           </div>
         </div>
         <div className="hero-poster" aria-hidden="true">
@@ -119,7 +156,7 @@ export default function Home({ products, onOpen, onAdd, userToken, onOpenAuth })
           </div>
           <div className="filter-row">
             <label>Max price: <b>{formatINR(maxPrice)}</b>
-              <input type="range" min="40" max="80" value={maxPrice} onChange={(e) => setMaxPrice(+e.target.value)} />
+              <input type="range" min="40" max="100" value={maxPrice} onChange={(e) => setMaxPrice(+e.target.value)} />
             </label>
             <select value={sort} onChange={(e) => setSort(e.target.value)}>
               <option value="popular">Popular</option>
@@ -130,7 +167,7 @@ export default function Home({ products, onOpen, onAdd, userToken, onOpenAuth })
         </div>
 
         <div className="grid">
-          {gridProducts.length === 0 && <p className="empty">No stickers found.</p>}
+          {gridProducts.length === 0 && <p className="empty">{maxPrice < 100 ? 'No stickers under this price. Raise the max price filter to see more.' : 'No stickers found.'}</p>}
           {gridProducts.map((p) => <ProductCard key={p.id} p={p} onOpen={onOpen} onAdd={onAdd} />)}
         </div>
       </section>
@@ -169,7 +206,7 @@ export default function Home({ products, onOpen, onAdd, userToken, onOpenAuth })
         <span className="custom-art">🎨</span>
         <h2>Got your own design?</h2>
         <p>Turn your photo, artwork or logo into a one-of-a-kind die-cut sticker.</p>
-        <button className="btn dark" onClick={() => pickCat('Custom')}>Create Your Sticker</button>
+        <button className="btn dark" onClick={onCreateCustom ?? (() => pickCat('Custom'))}>Create Your Sticker</button>
       </section>
 
       <section className="section">
@@ -185,7 +222,7 @@ export default function Home({ products, onOpen, onAdd, userToken, onOpenAuth })
         </div>
       </section>
 
-      <Comments userToken={userToken} onOpenAuth={onOpenAuth} />
+      <Comments userToken={userToken} onOpenAuth={onOpenAuth} enabled={commentsEnabled} />
 
       <section className="insta">
         <h2>Made to be stuck. Made to be seen.</h2>
@@ -200,7 +237,7 @@ export default function Home({ products, onOpen, onAdd, userToken, onOpenAuth })
       <footer id="footer" className="footer">
         <div className="fcol brand">
           <b>Stickshi</b>
-          <small>Sticker brand by <b>Limshin</b> — arts, music &amp; stickers.</small>
+          <small>{footer.tagline || 'Sticker brand by <b>Limshin</b> — arts, music &amp; stickers.'}</small>
         </div>
         <div className="fcols">
           <div className="fcol">
@@ -228,7 +265,7 @@ export default function Home({ products, onOpen, onAdd, userToken, onOpenAuth })
             <span className="fspan">Privacy</span>
           </div>
         </div>
-        <p className="copy">All rights reserved to Stickshi-Made proudly in भारत</p>
+        <p className="copy">{footer.note || 'All rights reserved to Stickshi-Made proudly in भारत'}</p>
       </footer>
     </main>
   )

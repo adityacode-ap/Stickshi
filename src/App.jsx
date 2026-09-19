@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Routes, Route, useNavigate } from 'react-router-dom'
 import './App.css'
-import { products as fallbackProducts, formatINR, shippingFee, freeShippingAbove, codFee } from './data.js'
-import { useCart } from './useCart.js'
-import { api } from './api.js'
+import { products as fallbackProducts, formatINR, shippingFee, freeShippingAbove, codFee } from './Javascripts/data.js'
+import { useCart } from './Javascripts/useCart.js'
+import { api } from './Javascripts/api.js'
 import { CartIcon, MoonIcon, Star, SunIcon } from './ui.jsx'
 import Home from './Home.jsx'
 import Admin from './Admin.jsx'
+import Dev from './Dev.jsx'
+import CustomOrder from './CustomOrder.jsx'
 import { About, Contact, Report, Sidebar, Team, WhatsAppFloat } from './pages.jsx'
 import AuthPanel from './Auth.jsx'
 
-function Header({ count, onCart, onHome, onAdmin, user, onSignOut, onOpenAuth, theme, onToggleTheme }) {
+function Header({ count, onCart, onHome, onAdmin, onDev, user, onSignOut, onOpenAuth, theme, onToggleTheme }) {
   return (
     <header className="navbar">
       <nav className="navbar-inner">
@@ -35,22 +37,37 @@ function Header({ count, onCart, onHome, onAdmin, user, onSignOut, onOpenAuth, t
           </button>
         </div>
       </nav>
-      <p className="tagline">by Limshin · delivering across India 🇮🇳 · <button className="link" onClick={onAdmin}>Admin</button></p>
+      <p className="tagline">by Limshin · delivering across India 🇮🇳 · <button className="link" onClick={onAdmin}>Admin</button> · <button className="link dev-link" onClick={onDev}>Dev</button></p>
     </header>
   )
 }
 
 function ProductDetails({ product, onBack, onAdd }) {
   const [qty, setQty] = useState(1)
+  const [stickerName, setStickerName] = useState('')
+  const [description, setDescription] = useState('')
+  const isCustom = product.category === 'Custom'
+  const customOk = !isCustom || (stickerName.trim() && description.trim())
   return (
     <main className="details">
       <button className="back" onClick={onBack}>← Back</button>
       <div className="detail-card">
-        <div className="detail-art" style={{ background: product.bg }}>{product.emoji}</div>
+        <div className="detail-art" style={{ background: product.bg }}>{product.image ? <img src={product.image} alt={product.name} className="detail-img" /> : product.emoji}</div>
         <div className="detail-body">
           <span className="cat">{product.category}</span>
           <h1>{product.name}</h1>
           <p>{product.desc}</p>
+          {isCustom && (
+            <div className="custom-fields">
+              <label>Sticker name
+                <input placeholder="e.g. My GTR Killingit" value={stickerName} onChange={(e) => setStickerName(e.target.value)} maxLength={60} required />
+              </label>
+              <label>Describe your design
+                <textarea placeholder="Your idea, art, photo or logo — colors, size, style. Anything that helps us nail it." value={description} onChange={(e) => setDescription(e.target.value)} maxLength={600} rows={3} required />
+              </label>
+              <p className="custom-note">🎨 Price covers one custom die-cut sticker. Tell us your design, then pay &amp; place the order via UPI or PayPal.</p>
+            </div>
+          )}
           <span className="rating big"><Star />{product.rating}</span>
           <p className="price big">{formatINR(product.price)}</p>
           <div className="qty-row">
@@ -58,7 +75,9 @@ function ProductDetails({ product, onBack, onAdd }) {
             <span>{qty}</span>
             <button onClick={() => setQty((q) => q + 1)} aria-label="increase">+</button>
           </div>
-          <button className="btn add wide" onClick={() => { onAdd(product.id, qty); onBack() }}>Add {qty} to Cart</button>
+          <button className="btn add wide" disabled={!customOk} onClick={() => { onAdd(product.id, qty, isCustom ? { name: stickerName.trim(), description: description.trim() } : undefined); onBack() }}>
+            {isCustom && !customOk ? 'Add name & design' : `Add ${qty} to Cart`}
+          </button>
         </div>
       </div>
     </main>
@@ -83,10 +102,11 @@ function Cart({ items, setQty, remove, onCheckout, onContinue }) {
       <div className="cart-layout">
         <div className="cart-items">
           {items.map((i) => (
-            <div className="cart-item" key={i.id} style={{ background: i.bg }}>
+            <div className="cart-item" key={i.id + (i.customData ? JSON.stringify(i.customData) : '')} style={{ background: i.bg }}>
               <span className="mini-art">{i.emoji}</span>
               <div className="ci-body">
                 <h3>{i.name}</h3>
+                {i.customData && <p className="custom-detail">🎨 <b>{i.customData.name}</b> — {i.customData.description}</p>}
                 <span className="price">{formatINR(i.price)}</span>
                 <div className="qty-row">
                   <button onClick={() => setQty(i.id, i.qty - 1)}>−</button>
@@ -127,6 +147,9 @@ function Checkout({ cart, products, onPlaceOrder, onBack }) {
   const [placing, setPlacing] = useState(false)
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
 
+  const hasCustom = items.some((i) => i.customData)
+  const payOptions = hasCustom ? ['UPI', 'PayPal'] : ['UPI', 'Card', 'COD']
+
   const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0)
   const shipping = subtotal >= freeShippingAbove ? 0 : shippingFee
   const cod = pay === 'COD' ? codFee : 0
@@ -153,8 +176,9 @@ function Checkout({ cart, products, onPlaceOrder, onBack }) {
           </div>
           <input placeholder="Pincode (6 digits)" value={form.pincode} onChange={set('pincode')} />
           <h3>Payment Method</h3>
+          {hasCustom && <p className="custom-note">🎨 Custom stickers are made to order — pay upfront via UPI or PayPal to place this order (no COD).</p>}
           <div className="pay-options">
-            {['UPI', 'Card', 'COD'].map((m) => (
+            {payOptions.map((m) => (
               <button key={m} className={`chip ${pay === m ? 'active' : ''}`} onClick={() => setPay(m)}>{m}</button>
             ))}
           </div>
@@ -232,7 +256,7 @@ function App() {
 
   const go = (v) => { setView(v); navigate('/'); window.scrollTo(0, 0) }
   const items = useMemo(() => cartWithData(cart.items, products), [cart.items, products])
-  const onAdd = (id, qty = 1) => { cart.add(id, qty) }
+  const onAdd = (id, qty = 1, customData) => { cart.add(id, qty, customData) }
 
   const login = (token, info) => { setUserToken(token); setUser(info) }
   const logout = () => {
@@ -240,16 +264,22 @@ function App() {
     setUserToken(''); setUser(null)
   }
 
+  const customProduct = products.find((p) => p.category === 'Custom')
+
   const store = view.name === 'admin'
     ? <Admin onExit={() => go({ name: 'home' })} onUpdateProducts={setProducts} />
-    : view.name === 'product'
+    : view.name === 'dev'
+      ? <Dev onExit={() => go({ name: 'home' })} onOpenAdmin={() => go({ name: 'admin' })} />
+      : view.name === 'custom'
+        ? <CustomOrder product={customProduct} onBack={() => go({ name: 'home' })} onDone={(o) => go({ name: 'success', order: o })} />
+        : view.name === 'product'
     ? <ProductDetails product={view.product} onBack={() => go({ name: 'home' })} onAdd={onAdd} />
     : view.name === 'cart'
       ? <Cart items={items} setQty={cart.setQty} remove={cart.remove} onCheckout={() => go({ name: 'checkout' })} onContinue={() => go({ name: 'home' })} />
       : view.name === 'checkout'
         ? <Checkout cart={cart.items} products={products} onBack={() => go({ name: 'cart' })} onPlaceOrder={async (o) => {
             try {
-              const saved = await api('/orders', { method: 'POST', body: { ...o, items: items.map((i) => ({ name: i.name, emoji: i.emoji, qty: i.qty, price: i.price })) } })
+              const saved = await api('/orders', { method: 'POST', body: { ...o, items: items.map((i) => ({ name: i.name, emoji: i.emoji, qty: i.qty, price: i.price, category: i.category, customData: i.customData })) } })
               o.id = saved.id
             } catch {
               // order still shown locally if backend is unreachable
@@ -259,11 +289,11 @@ function App() {
           }} />
         : view.name === 'success'
           ? <Success order={view.order} onHome={() => go({ name: 'home' })} />
-          : <Home products={products} onOpen={(p) => go({ name: 'product', product: p })} onAdd={onAdd} userToken={userToken} onOpenAuth={() => setShowAuth(true)} />
+          : <Home products={products} onOpen={(p) => go({ name: 'product', product: p })} onAdd={onAdd} userToken={userToken} onOpenAuth={() => setShowAuth(true)} onCreateCustom={() => go({ name: 'custom' })} />
 
   return (
     <div className="app">
-      <Header count={cart.count} onCart={() => go({ name: 'cart' })} onHome={() => go({ name: 'home' })} onAdmin={() => go({ name: 'admin' })} user={user} onSignOut={logout} onOpenAuth={() => setShowAuth(true)} theme={theme} onToggleTheme={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))} />
+      <Header count={cart.count} onCart={() => go({ name: 'cart' })} onHome={() => go({ name: 'home' })} onAdmin={() => go({ name: 'admin' })} onDev={() => go({ name: 'dev' })} user={user} onSignOut={logout} onOpenAuth={() => setShowAuth(true)} theme={theme} onToggleTheme={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))} />
       <div className="layout">
         <Sidebar />
         <Routes>

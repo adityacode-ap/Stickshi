@@ -17,11 +17,13 @@ export function useCart() {
     localStorage.setItem(KEY, JSON.stringify(items))
   }, [items])
 
-  const add = (id, qty = 1) =>
+  const sameSpec = (a, b) => JSON.stringify(a.customData ?? null) === JSON.stringify(b.customData ?? null)
+
+  const add = (id, qty = 1, customData) =>
     setItems((prev) => {
-      const found = prev.find((i) => i.id === id)
-      if (found) return prev.map((i) => (i.id === id ? { ...i, qty: i.qty + qty } : i))
-      return [...prev, { id, qty }]
+      const found = prev.find((i) => i.id === id && (!customData || sameSpec(i, { customData })))
+      if (found) return prev.map((i) => (i.id === id && sameSpec(i, { customData }) ? { ...i, qty: i.qty + qty, customData } : i))
+      return [...prev, { id, qty, customData }]
     })
 
   const setQty = (id, qty) =>

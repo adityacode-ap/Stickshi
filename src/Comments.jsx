@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { api } from './api.js'
+import { api } from './Javascripts/api.js'
 
-export default function Comments({ userToken, onOpenAuth }) {
+export default function Comments({ userToken, onOpenAuth, enabled }) {
   const [comments, setComments] = useState([])
   const [text, setText] = useState('')
   const [err, setErr] = useState('')
@@ -12,6 +12,14 @@ export default function Comments({ userToken, onOpenAuth }) {
       .then((d) => setComments(d.comments))
       .catch(() => {})
   }, [])
+
+  if (enabled === false) {
+    return (
+      <section className="section comments-section">
+        <p className="empty">Comments are turned off right now — check back soon!</p>
+      </section>
+    )
+  }
 
   const submit = async (e) => {
     e.preventDefault()

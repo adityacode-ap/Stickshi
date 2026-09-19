@@ -1,0 +1,21 @@
+{
+  "siteOpen": true,
+  "commentsEnabled": true,
+  "announcement": {
+    "title": "⭐ Coming soon: Review Stars!",
+    "text": "Every sticker is about to get a 1–5 star rating from real customers. The best-loved designs get crowned Stickshi Favourites — stick around!",
+    "enabled": true
+  },
+  "hero": {
+    "title": "Have Some STICKSHIsss!",
+    "highlight": "STICKSHIsss!",
+    "scheme": "Follow our Instagram page for an extra 10% discount on next order!",
+    "subtitle": "Premium stickers for your laptop, phone, bottles & more — made by Limshin, delivered across India.",
+    "shopCta": "Shop Now",
+    "exploreCta": "Explore Collections"
+  },
+  "footer": {
+    "tagline": "Sticker brand by Limshin — arts, music & stickers.",
+    "note": "All rights reserved to Stickshi-Made proudly in भारत"
+  }
+}

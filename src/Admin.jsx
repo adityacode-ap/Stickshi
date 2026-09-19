@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { categories, formatINR } from './data.js'
-import { api } from './api.js'
+import { categories, formatINR } from './Javascripts/data.js'
+import { api } from './Javascripts/api.js'
 
 const TOKEN_KEY = 'stickshi-admin'
 
@@ -81,6 +81,8 @@ function ProductsTab({ token, onUnauthorized, onUpdated }) {
       name: draft.name || 'New Sticker',
       category: draft.category || 'Anime',
       price: +draft.price || 49,
+      qty: +draft.qty || 0,
+      bestseller: draft.bestseller || false,
       emoji: draft.emoji || '🫧',
       bg: draft.bg || '#e8ecf0',
       desc: draft.desc || '',
@@ -91,14 +93,35 @@ function ProductsTab({ token, onUnauthorized, onUpdated }) {
 
   const remove = (id) => apply(api(`/products/${id}`, { method: 'DELETE', token }))
 
+  const onImage = (e) => {
+    const f = e.target.files?.[0]
+    if (!f) return
+    if (f.size > 400 * 1024) return alert('Image too large (max 400KB)')
+    const r = new FileReader()
+    r.onload = () => setDraft({ ...draft, image: String(r.result) })
+    r.readAsDataURL(f)
+  }
+
   const fields = (p) => (
     <>
-      <input value={draft.name ?? p.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="Name" />
-      <input value={draft.price ?? p.price} onChange={(e) => setDraft({ ...draft, price: e.target.value })} placeholder="Price ₹" />
-      <input value={draft.emoji ?? p.emoji} onChange={(e) => setDraft({ ...draft, emoji: e.target.value })} placeholder="Emoji" />
-      <select value={draft.category ?? p.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })}>
-        {categories.filter((c) => c !== 'All').map((c) => <option key={c}>{c}</option>)}
-      </select>
+      <div className="dev-fields">
+        <input value={draft.name ?? p.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="Name" />
+        <input value={draft.price ?? p.price} onChange={(e) => setDraft({ ...draft, price: e.target.value })} placeholder="Price ₹" />
+        <input value={draft.qty ?? p.qty} onChange={(e) => setDraft({ ...draft, qty: e.target.value })} placeholder="Qty" />
+        <input value={draft.emoji ?? p.emoji} onChange={(e) => setDraft({ ...draft, emoji: e.target.value })} placeholder="Emoji" />
+        <select value={draft.category ?? p.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })}>
+          {categories.filter((c) => c !== 'All').map((c) => <option key={c}>{c}</option>)}
+        </select>
+        {(draft.image ?? p.image) ? (
+          <span className="dev-img-preview">
+            <img src={draft.image ?? p.image} alt="" />
+            <button className="link" onClick={() => setDraft({ ...draft, image: '' })}>remove photo</button>
+          </span>
+        ) : (
+          <label className="dev-file">Photo <input type="file" accept="image/*" onChange={onImage} /></label>
+        )}
+        <label className="dev-check"><input type="checkbox" checked={!!(draft.bestseller ?? p.bestseller)} onChange={(e) => setDraft({ ...draft, bestseller: e.target.checked })} /> Bestseller</label>
+      </div>
     </>
   )
 
@@ -170,9 +193,41 @@ function OrdersTab({ token, onUnauthorized }) {
       <div className="admin-table">
         {orders.map((o, i) => (
           <div className="admin-order" key={i}>
-            <p><b>#{o.id}</b> · {new Date(o.placedAt).toLocaleString('en-IN')} · {o.pay}</p>
+            {o.items?.some((it) => it.customData) && <p className="custom-order-flag">🎨 Custom sticker order</p>}
+            <p><b>#{o.id}</b> · {new Date(o.placedAt).toLocaleString('en-IN')} · {o.pay} · <b>{o.customerPhone ? `signed-in as +91 ${o.customerPhone}` : 'guest'}</b></p>
             <p><b>{o.name}</b> · {o.phone} · {o.address}, {o.city}, {o.state} {o.pincode}</p>
-            <p>{o.items ? o.items.map((it) => `${it.emoji} ${it.name} ×${it.qty}`).join(', ') : `${o.count} items`} · <b>{formatINR(o.total)}</b></p>
+            <p>{o.items ? o.items.map((it) => `${it.emoji} ${it.name} ×${it.qty}${it.customData ? ` 🎨 “${it.customData.name}” — ${it.customData.description}` : ''}`).join(', ') : `${o.count} items`} · <b>{formatINR(o.total)}</b></p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function UsersTab({ token, onUnauthorized }) {
+  const [users, setUsers] = useState([])
+  const [err, setErr] = useState('')
+
+  useEffect(() => {
+    api('/admin/users', { token })
+      .then((d) => { setUsers(d.users); setErr('') })
+      .catch((e) => { if (e.status === 401) onUnauthorized(); else setErr('Could not load users. Is the server running?') })
+  }, [token, onUnauthorized])
+
+  return (
+    <div className="admin-users">
+      <h2>Customers ({users.length})</h2>
+      <p className="dev-hint">Customer views stay private — only name, phone and sign-in method are visible here.</p>
+      {err && <p className="err">{err}</p>}
+      {users.length === 0 && !err && <p className="empty">No users yet.</p>}
+      <div className="admin-table">
+        <div className="admin-th"><span>Name</span><span>Phone</span><span>via</span><span>Joined</span></div>
+        {users.map((u) => (
+          <div className="admin-row" key={u.id}>
+            <span><b>{u.name}</b></span>
+            <span>{u.phone || '—'}</span>
+            <span>{u.authMethod}{u.authMethod === 'google' ? ' · Google' : ''}</span>
+            <span>{u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-IN') : '—'}</span>
           </div>
         ))}
       </div>
@@ -273,13 +328,16 @@ export default function Admin({ onExit, onUpdateProducts }) {
           <div className="chips admin-tabs">
             <button className={`chip ${tab === 'products' ? 'active' : ''}`} onClick={() => setTab('products')}>Products</button>
             <button className={`chip ${tab === 'orders' ? 'active' : ''}`} onClick={() => setTab('orders')}>Orders</button>
+            <button className={`chip ${tab === 'users' ? 'active' : ''}`} onClick={() => setTab('users')}>Customers</button>
             <button className={`chip ${tab === 'comments' ? 'active' : ''}`} onClick={() => setTab('comments')}>Comments</button>
           </div>
           {tab === 'products'
             ? <ProductsTab token={token} onUpdated={onUpdateProducts} onUnauthorized={logout} />
             : tab === 'orders'
               ? <OrdersTab token={token} onUnauthorized={logout} />
-              : <CommentsTab token={token} onUnauthorized={logout} />}
+              : tab === 'users'
+                ? <UsersTab token={token} onUnauthorized={logout} />
+                : <CommentsTab token={token} onUnauthorized={logout} />}
         </>
       ) : (
         <Login onLogin={(t) => { setToken(t); setAuthed(true) }} />

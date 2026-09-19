@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { api } from './api.js'
-import { setUserToken } from './userAuth.js'
+import { api } from './Javascripts/api.js'
+import { setUserToken } from './Javascripts/userAuth.js'
 
 function GoogleButton({ clientId, disabled, onCredential }) {
   const ref = useRef(null)

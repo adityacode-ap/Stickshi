@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { products as seedProducts } from '../src/data.js'
+import { products as seedProducts } from '../src/Javascripts/data.js'
 import { hashPassword } from './auth.js'
 
 const dir = path.dirname(fileURLToPath(import.meta.url))
@@ -44,3 +44,31 @@ export function getAdmin() {
   write('admins', [admin])
   return admin
 }
+
+const DEFAULT_CONFIG = {
+  siteOpen: true,
+  commentsEnabled: true,
+  announcement: {
+    enabled: true,
+    title: '⭐ Coming soon: Review Stars!',
+    text: 'Every sticker is about to get a 1–5 star rating from real customers. The best-loved designs get crowned Stickshi Favourites — stick around!',
+  },
+  hero: {
+    title: 'Have Some STICKSHIsss!',
+    highlight: 'STICKSHIsss!',
+    scheme: 'Follow our Instagram page for an extra 10% discount on next order!',
+    subtitle: 'Premium stickers for your laptop, phone, bottles & more — made by Limshin, delivered across India.',
+    shopCta: 'Shop Now',
+    exploreCta: 'Explore Collections',
+  },
+  footer: {
+    tagline: 'Sticker brand by Limshin — arts, music & stickers.',
+    note: 'All rights reserved to Stickshi-Made proudly in भारत',
+  },
+}
+
+export function getConfig() {
+  return read('config', null) || DEFAULT_CONFIG
+}
+
+export const saveConfig = (cfg) => write('config', cfg)
