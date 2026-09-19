@@ -106,7 +106,7 @@ export default function Home({ products, onOpen, onAdd, userToken, onOpenAuth, o
         <div className="hero-text">
           <h1>{heroMarkup}</h1>
           {hero.scheme !== '' && <h4 className='Scheme'>{hero.scheme ?? 'Follow our Instagram page for an extra 10% discount on next order!'}</h4>}
-          <p>{hero.subtitle ?? 'Premium stickers for your laptop, phone, bottles &amp; more — made by Limshin, delivered across India with Free of cost inside Assam!.'}</p>
+          <p>{hero.subtitle ?? 'Premium stickers for your laptop, phone, bottles &amp; more — made by Limshin, Assam Delivary Free.'}</p>
           <div className="hero-cta">
             <button className="btn dark" onClick={() => scrollTo('shop')}>{hero.shopCta ?? 'Shop Now'}</button>
             <button className="btn ghost" onClick={() => scrollTo('collections')}>{hero.exploreCta ?? 'Explore Collections'}</button>
