@@ -34,3 +34,6 @@ server/admins.json
 *.njsproj
 *.sln
 *.sw?
+
+test-*.png
+test-responsive.mjs
