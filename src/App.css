@@ -52,7 +52,7 @@
 }
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; overflow-x: hidden; }
 body {
   font-family: var(--font-body);
   color: var(--text-1);
@@ -69,7 +69,7 @@ button { font-family: var(--font-display); cursor: pointer; }
 input, textarea, select { font-family: var(--font-body); }
 h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 700; letter-spacing: -.02em; line-height: 1.15; }
 
-.app { min-height: 100vh; }
+.app { min-height: 100vh; overflow-x: hidden; }
 
 .Msg1 {
   text-align: center;
@@ -817,7 +817,9 @@ font-size: 20px;
   .s-link { white-space: nowrap; font-size: .88rem; padding: 9px 13px; }
   .admin-th, .admin-row { grid-template-columns: 1.5fr 1fr 1fr; }
   .admin-th > span:nth-child(4), .admin-row > span:nth-child(4) { display: none; }
-  .grid { grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 0 12px 40px; }
+  .grid { grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 0 12px 40px; overflow: hidden; }
+  .card { box-shadow: 3px 3px 0 var(--shadow-hard); }
+  .card:hover { box-shadow: 5px 5px 0 var(--shadow-hard); }
   .form input, .form textarea, .auth-field input, .admin-login-form input,
   .admin-row input, .admin-row select, .search { font-size: 16px; }
   .remove, .clear, .flink, .cat { padding: 6px; }
