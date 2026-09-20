@@ -37,3 +37,6 @@ server/admins.json
 
 test-*.png
 test-responsive.mjs
+
+audit-mobile.mjs
+audit-*.png
