@@ -889,6 +889,41 @@ font-size: 20px;
   .admin-order { font-size: .84rem; padding: 12px; }
 }
 
+@media (max-width: 379px) {
+  .hero-text h1 { font-size: 1.5rem; }
+  .hero-text p { font-size: .9rem; }
+  .hero { padding: 28px 14px 40px; }
+  .grid { grid-template-columns: 1fr; gap: 12px; padding: 0 10px 32px; }
+  .sticker-art { font-size: 2.2rem; }
+  .card-body h3 { font-size: .82rem; }
+  .card-body .price { font-size: .9rem; }
+  .sec-title { font-size: 1.1rem; }
+  .section { padding: 22px 10px; }
+  .chip { padding: 6px 10px; font-size: .75rem; }
+  .vibes-row { grid-template-columns: repeat(2, 1fr); }
+  .why-grid { grid-template-columns: 1fr; }
+  .fcols { grid-template-columns: 1fr; }
+  .logo { font-size: 1.1rem; }
+  .navbar-inner { padding: 0 10px; }
+  .cat-card { padding: 8px 10px; min-width: 80px; font-size: .78rem; }
+  .cat-emoji { font-size: 1.1rem; }
+  .custom h2 { font-size: 1.15rem; }
+  .custom { padding: 36px 14px; }
+  .insta h2 { font-size: 1.05rem; }
+  .reviews-row { gap: 10px; }
+  .review { padding: 16px; }
+  .review p { font-size: .85rem; }
+  .footer { padding: 22px 12px 14px; }
+  .fcols { gap: 12px; }
+  .flink { font-size: .82rem; }
+  .copy { font-size: .72rem; }
+  .detail-art { font-size: 3.5rem; max-height: 200px; }
+  .detail-body { padding: 0 16px 20px; }
+  .detail-body h1 { font-size: 1.3rem; }
+  .qty-row { gap: 12px; }
+  .qty-row button { width: 36px; height: 36px; }
+}
+
 @media (hover: none) {
   .card:hover { transform: none; box-shadow: 5px 5px 0 var(--shadow-hard); }
   .card:active { transform: translate(-2px, -2px); }
