@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /api/
 
-Sitemap: https://shi.onrender.com/sitemap.xml
+Sitemap: https://stickshi.onrender.com/sitemap.xml
