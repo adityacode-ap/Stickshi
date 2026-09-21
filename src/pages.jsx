@@ -64,7 +64,7 @@ export function Contact() {
       <div className="contact-grid">
         <div className="contact-card">
           <h3>Instagram</h3>
-          <img className="qr" src="/qr.png" alt="Scan to follow Stickshi on Instagram" />
+          <img className="qr" src="/qr.png" alt="Scan to follow Stickshi on Instagram" width="150" height="150" loading="lazy" />
           <a className="Number" href={INSTA_URL} target="_blank" rel="noreferrer">@stickshi_</a>
         </div>
         <div className="contact-card">
@@ -84,7 +84,7 @@ export function Team() {
       <div className="team-grid">
         <div className="team-card">
           <div className="team-photo-wrap">
-            <img src={founderImg} alt="Shiven Limbu" className="team-photo" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+            <img src={founderImg} alt="Shiven Limbu" className="team-photo" loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none' }} />
             <span className="team-fallback">🖤</span>
           </div>
           <h3>Shiven Limbu</h3>
@@ -92,7 +92,7 @@ export function Team() {
         </div>
         <div className="team-card">
           <div className="team-photo-wrap">
-            <img src={devImg} alt="Aditya Bastola" className="team-photo" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+            <img src={devImg} alt="Aditya Bastola" className="team-photo" loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none' }} />
             <span className="team-fallback">💻</span>
           </div>
           <h3>Aditya Bastola</h3>

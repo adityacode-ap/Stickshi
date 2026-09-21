@@ -105,7 +105,7 @@ export default function Home({ products, onOpen, onAdd, userToken, onOpenAuth, o
       <section className="hero">
         <div className="hero-text">
           <h1>{heroMarkup}</h1>
-          {hero.scheme !== '' && <h4 className='Scheme'>{hero.scheme ?? 'Follow our Instagram page for an extra 10% discount on next order!'}</h4>}
+          {hero.scheme !== '' && <p className='Scheme'>{hero.scheme ?? 'Follow our Instagram page for an extra 10% discount on next order!'}</p>}
           <p>{hero.subtitle ?? 'Premium stickers for your laptop, phone, bottles &amp; more — made by Limshin, Assam Delivary Free.'}</p>
           <div className="hero-cta">
             <button className="btn dark" onClick={() => scrollTo('shop')}>{hero.shopCta ?? 'Shop Now'}</button>
@@ -148,7 +148,7 @@ export default function Home({ products, onOpen, onAdd, userToken, onOpenAuth, o
         </div>
 
         <div className="controls">
-          <input className="search" placeholder="Search stickers…" value={query} onChange={(e) => setQuery(e.target.value)} />
+          <input className="search" placeholder="Search stickers…" aria-label="Search stickers" value={query} onChange={(e) => setQuery(e.target.value)} />
           <div className="chips">
             {categories.map((c) => (
               <button key={c} className={`chip ${cat === c && !vibe ? 'active' : ''}`} onClick={() => pickCat(c)}>{c}</button>
@@ -158,7 +158,7 @@ export default function Home({ products, onOpen, onAdd, userToken, onOpenAuth, o
             <label>Max price: <b>{formatINR(maxPrice)}</b>
               <input type="range" min="40" max="100" value={maxPrice} onChange={(e) => setMaxPrice(+e.target.value)} />
             </label>
-            <select value={sort} onChange={(e) => setSort(e.target.value)}>
+            <select aria-label="Sort products" value={sort} onChange={(e) => setSort(e.target.value)}>
               <option value="popular">Popular</option>
               <option value="price-asc">Price: Low to High</option>
               <option value="price-desc">Price: High to Low</option>
@@ -230,7 +230,7 @@ export default function Home({ products, onOpen, onAdd, userToken, onOpenAuth, o
         <div className="insta-tiles" aria-hidden="true">
           <span>🐶</span><span>🌸</span><span>🏎️</span><span>🌀</span><span>👾</span><span>☁️</span>
         </div>
-        <img className="qr" src="/qr.png" alt="Scan to follow Stickshi on Instagram" />
+        <img className="qr" src="/qr.png" alt="Scan to follow Stickshi on Instagram" width="150" height="150" loading="lazy" />
         <a className="btn dark" href="https://www.instagram.com/stickshi_?utm_source=ig_web_button_share_sheet&stkn=ZDNlZDc0MzIxNw==" target="_blank" rel="noreferrer">Follow on Instagram</a>
       </section>
 

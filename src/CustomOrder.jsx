@@ -56,8 +56,8 @@ export default function CustomOrder({ product, onBack, onDone }) {
       <div className="cart-layout">
         <section className="form">
           <h3>Design details</h3>
-          <input placeholder="Sticker name (e.g. My GTR, Custom logo)" value={stickerName} onChange={(e) => setStickerName(e.target.value)} maxLength={60} />
-          <textarea placeholder="Describe your design — your idea, art, photo, logo, colors, size, style. Anything that helps us nail it." value={description} onChange={(e) => setDescription(e.target.value)} maxLength={600} rows={3} />
+          <input placeholder="Sticker name (e.g. My GTR, Custom logo)" aria-label="Sticker name" value={stickerName} onChange={(e) => setStickerName(e.target.value)} maxLength={60} />
+          <textarea placeholder="Describe your design — your idea, art, photo, logo, colors, size, style. Anything that helps us nail it." aria-label="Design description" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={600} rows={3} />
           <p className="custom-note">Price covers one custom die-cut sticker. Pay &amp; place your order via UPI or PayPal.</p>
 
           <h3>Quantity</h3>
@@ -68,15 +68,15 @@ export default function CustomOrder({ product, onBack, onDone }) {
           </div>
 
           <h3>Delivery Details</h3>
-          <input placeholder="Full name" value={form.name} onChange={set('name')} />
-          <input placeholder="Email" type="email" value={form.email} onChange={set('email')} />
-          <input placeholder="Phone (10 digits)" value={form.phone} onChange={set('phone')} />
-          <textarea placeholder="Address (house no, street, area)" value={form.address} onChange={set('address')} />
+          <input placeholder="Full name" aria-label="Full name" value={form.name} onChange={set('name')} required />
+          <input placeholder="Email" type="email" aria-label="Email" value={form.email} onChange={set('email')} required />
+          <input placeholder="Phone (10 digits)" aria-label="Phone" value={form.phone} onChange={set('phone')} inputMode="numeric" required />
+          <textarea placeholder="Address (house no, street, area)" aria-label="Address" value={form.address} onChange={set('address')} required />
           <div className="row2">
-            <input placeholder="City" value={form.city} onChange={set('city')} />
-            <input placeholder="State" value={form.state} onChange={set('state')} />
+            <input placeholder="City" aria-label="City" value={form.city} onChange={set('city')} required />
+            <input placeholder="State" aria-label="State" value={form.state} onChange={set('state')} required />
           </div>
-          <input placeholder="Pincode (6 digits)" value={form.pincode} onChange={set('pincode')} />
+          <input placeholder="Pincode (6 digits)" aria-label="Pincode" value={form.pincode} onChange={set('pincode')} inputMode="numeric" required />
 
           <h3>Payment Method</h3>
           <div className="pay-options">

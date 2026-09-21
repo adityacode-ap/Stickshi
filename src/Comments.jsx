@@ -50,7 +50,7 @@ export default function Comments({ userToken, onOpenAuth, enabled }) {
       </div>
       {userToken ? (
         <form className="comment-form" onSubmit={submit}>
-          <textarea placeholder="Share your Stickshi story…" value={text} onChange={(e) => setText(e.target.value)} maxLength={500} />
+          <textarea aria-label="Share your Stickshi story" placeholder="Share your Stickshi story…" value={text} onChange={(e) => setText(e.target.value)} maxLength={500} />
           {err && <p className="err">{err}</p>}
           <button className="btn add" disabled={busy || !text.trim()}>{busy ? 'Posting…' : 'Post comment'}</button>
         </form>

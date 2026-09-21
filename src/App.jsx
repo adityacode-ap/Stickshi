@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Routes, Route, useNavigate } from 'react-router-dom'
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import './App.css'
+import Seo from './Seo.jsx'
+import { siteUrl } from './site.js'
 import { products as fallbackProducts, formatINR, shippingFee, freeShippingAbove, codFee } from './Javascripts/data.js'
 import { useCart } from './Javascripts/useCart.js'
 import { api } from './Javascripts/api.js'
@@ -166,15 +168,15 @@ function Checkout({ cart, products, onPlaceOrder, onBack }) {
       <div className="cart-layout">
         <section className="form">
           <h3>Delivery Details</h3>
-          <input placeholder="Full name" value={form.name} onChange={set('name')} />
-          <input placeholder="Email" type="email" value={form.email} onChange={set('email')} />
-          <input placeholder="Phone (10 digits)" value={form.phone} onChange={set('phone')} />
-          <textarea placeholder="Address (house no, street, area)" value={form.address} onChange={set('address')} />
+          <input placeholder="Full name" aria-label="Full name" value={form.name} onChange={set('name')} required />
+          <input placeholder="Email" type="email" aria-label="Email" value={form.email} onChange={set('email')} required />
+          <input placeholder="Phone (10 digits)" aria-label="Phone" value={form.phone} onChange={set('phone')} inputMode="numeric" required />
+          <textarea placeholder="Address (house no, street, area)" aria-label="Address" value={form.address} onChange={set('address')} required />
           <div className="row2">
-            <input placeholder="City" value={form.city} onChange={set('city')} />
-            <input placeholder="State" value={form.state} onChange={set('state')} />
+            <input placeholder="City" aria-label="City" value={form.city} onChange={set('city')} required />
+            <input placeholder="State" aria-label="State" value={form.state} onChange={set('state')} required />
           </div>
-          <input placeholder="Pincode (6 digits)" value={form.pincode} onChange={set('pincode')} />
+          <input placeholder="Pincode (6 digits)" aria-label="Pincode" value={form.pincode} onChange={set('pincode')} inputMode="numeric" required />
           <h3>Payment Method</h3>
           {hasCustom && <p className="custom-note">🎨 Custom stickers are made to order — pay upfront via UPI or PayPal to place this order (no COD).</p>}
           <div className="pay-options">
@@ -229,6 +231,8 @@ function Success({ order, onHome }) {
 function App() {
   const cart = useCart()
   const navigate = useNavigate()
+  const location = useLocation()
+  const pathname = location.pathname
   const [products, setProducts] = useState([])
   const [view, setView] = useState({ name: 'home' })
   const [user, setUser] = useState(null)
@@ -266,6 +270,113 @@ function App() {
 
   const customProduct = products.find((p) => p.category === 'Custom')
 
+  const seo = useMemo(() => {
+    if (view.name === 'product' && view.product) {
+      const p = view.product
+      return {
+        title: `${p.name} — Die-Cut Sticker`,
+        description: `${p.desc} Starting at ₹${p.price}. Waterproof vinyl, made by Limshin. Free shipping over ₹499 across India.`,
+        jsonLd: [
+          {
+            '@context': 'https://schema.org',
+            '@type': 'Product',
+            name: p.name,
+            description: p.desc,
+            image: siteUrl + (p.image || '/Favicon.jpeg'),
+            brand: { '@type': 'Brand', name: 'Stickshi' },
+            category: p.category,
+            offers: {
+              '@type': 'Offer',
+              priceCurrency: 'INR',
+              price: p.price,
+              itemCondition: 'https://schema.org/NewCondition',
+              availability: 'https://schema.org/InStock',
+              url: siteUrl + '/',
+            },
+          },
+          {
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'Home', item: siteUrl + '/' },
+              { '@type': 'ListItem', position: 2, name: p.name, item: siteUrl + '/' },
+            ],
+          },
+        ],
+      }
+    }
+    if (pathname === '/about')
+      return {
+        title: 'About Stickshi — Sticker Brand by Limshin',
+        description: 'About Stickshi — a sticker brand founded by Shiven Limbu (Limshin), musician and artist, making premium die-cut vinyl stickers in Assam.',
+        path: pathname,
+      }
+    if (pathname === '/contact')
+      return {
+        title: 'Contact Stickshi — Instagram & WhatsApp',
+        description: 'Contact Stickshi for orders, restocks and custom sticker requests — chat on WhatsApp or follow @stickshi_ on Instagram.',
+        path: pathname,
+      }
+    if (pathname === '/team')
+      return {
+        title: 'Team — The People Behind Stickshi',
+        description: 'Meet the Stickshi team: founder Shiven Limbu (Limshin) and senior web developer Aditya Bastola.',
+        path: pathname,
+      }
+    if (pathname === '/report')
+      return {
+        title: 'Report an Issue — Stickshi',
+        description: 'Found a bug or a broken order? Report it to Stickshi on WhatsApp and we will fix it fast.',
+        path: pathname,
+      }
+    if (pathname !== '/')
+      return {
+        title: 'Page not found — Stickshi',
+        description: 'The page you are looking for does not exist.',
+        path: pathname,
+        noindex: true,
+      }
+    if (view.name === 'admin') return { title: 'Admin — Stickshi', description: '', noindex: true }
+    if (view.name === 'dev') return { title: 'Developer Console — Stickshi', description: '', noindex: true }
+    if (view.name === 'custom')
+      return {
+        title: 'Order a Custom Sticker — Stickshi',
+        description: 'Turn your photo, artwork or logo into a one-of-a-kind die-cut sticker. Tell us your design and order via UPI or PayPal.',
+      }
+    if (view.name === 'cart')
+      return {
+        title: 'Your Cart — Stickshi',
+        description: 'Review the stickers in your Stickshi cart and check out securely.',
+      }
+    if (view.name === 'checkout')
+      return {
+        title: 'Checkout — Stickshi',
+        description: 'Enter your delivery details and pay for your Stickshi order via UPI, card or COD.',
+      }
+    if (view.name === 'success')
+      return { title: 'Order Placed — Stickshi', description: 'Your Stickshi order has been placed. Thanks for your support!', noindex: true }
+
+    const trending = products.filter((p) => p.bestseller)
+    return {
+      title: 'Stickshi — Premium Die-Cut Stickers, Made by Limshin',
+      description: trending.length
+        ? `Trending: ${trending.slice(0, 5).map((p) => p.name).join(', ')}. Premium die-cut vinyl stickers made by Limshin — free shipping over ₹499 across India.`
+        : 'Premium die-cut vinyl stickers for your laptop, phone, bottles & more — made by Limshin. All India delivery with free shipping over ₹499.',
+      jsonLd: {
+        '@context': 'https://schema.org',
+        '@type': 'ItemList',
+        name: 'Trending Stickers',
+        numberOfItems: trending.length,
+        itemListElement: trending.map((p, i) => ({
+          '@type': 'ListItem',
+          position: i + 1,
+          name: p.name,
+          url: siteUrl + '/',
+        })),
+      },
+    }
+  }, [view, pathname, products])
+
   const store = view.name === 'admin'
     ? <Admin onExit={() => go({ name: 'home' })} onUpdateProducts={setProducts} />
     : view.name === 'dev'
@@ -293,6 +404,7 @@ function App() {
 
   return (
     <div className="app">
+      <Seo {...seo} />
       <Header count={cart.count} onCart={() => go({ name: 'cart' })} onHome={() => go({ name: 'home' })} onAdmin={() => go({ name: 'admin' })} onDev={() => go({ name: 'dev' })} user={user} onSignOut={logout} onOpenAuth={() => setShowAuth(true)} theme={theme} onToggleTheme={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))} />
       <div className="layout">
         <Sidebar />

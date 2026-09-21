@@ -221,6 +221,7 @@ font-size: 20px;
   background-clip: text;
 }
 .hero-text p { color: var(--muted); margin-top: 12px; font-size: 1.02rem; max-width: 440px; line-height: 1.55; }
+.hero-text .Scheme { color: inherit; font-weight: 700; }
 .hero-cta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; }
 .hero-poster {
   position: relative;
@@ -829,7 +830,7 @@ font-size: 20px;
   .detail-art { font-size: 4.5rem; }
   .admin-bar { flex-wrap: wrap; }
   .wa-float { right: calc(14px + env(safe-area-inset-right)); bottom: calc(14px + env(safe-area-inset-bottom)); }
-  .cookie-bar { left: calc(12px + env(safe-area-inset-left)); right: calc(12px + env(safe-area-inset-right)); bottom: calc(12px + env(safe-area-inset-bottom)); }
+  .cookie-bar { position: static; max-width: none; margin: 4px 12px 20px; box-shadow: 4px 4px 0 var(--shadow-hard); }
   .hero { padding: 36px 18px 48px; gap: 20px; text-align: center; grid-template-columns: 1fr; }
   .hero-poster { display: none; }
   .hero-text { max-width: 100%; }
