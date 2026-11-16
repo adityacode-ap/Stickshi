@@ -259,6 +259,7 @@ function App() {
   }, [userToken])
 
   const go = (v) => { setView(v); navigate('/'); window.scrollTo(0, 0) }
+  const goAdmin = () => { setView({ name: 'home' }); navigate('/adminlog'); window.scrollTo(0, 0) }
   const items = useMemo(() => cartWithData(cart.items, products), [cart.items, products])
   const onAdd = (id, qty = 1, customData) => { cart.add(id, qty, customData) }
 
@@ -329,6 +330,7 @@ function App() {
         description: 'Found a bug or a broken order? Report it to Stickshi on WhatsApp and we will fix it fast.',
         path: pathname,
       }
+    if (pathname === '/adminlog') return { title: 'Admin — Stickshi', description: '', path: pathname, noindex: true }
     if (pathname !== '/')
       return {
         title: 'Page not found — Stickshi',
@@ -336,7 +338,6 @@ function App() {
         path: pathname,
         noindex: true,
       }
-    if (view.name === 'admin') return { title: 'Admin — Stickshi', description: '', noindex: true }
     if (view.name === 'dev') return { title: 'Developer Console — Stickshi', description: '', noindex: true }
     if (view.name === 'custom')
       return {
@@ -377,13 +378,11 @@ function App() {
     }
   }, [view, pathname, products])
 
-  const store = view.name === 'admin'
-    ? <Admin onExit={() => go({ name: 'home' })} onUpdateProducts={setProducts} />
-    : view.name === 'dev'
-      ? <Dev onExit={() => go({ name: 'home' })} onOpenAdmin={() => go({ name: 'admin' })} />
-      : view.name === 'custom'
-        ? <CustomOrder product={customProduct} onBack={() => go({ name: 'home' })} onDone={(o) => go({ name: 'success', order: o })} />
-        : view.name === 'product'
+  const store = view.name === 'dev'
+    ? <Dev onExit={() => go({ name: 'home' })} onOpenAdmin={goAdmin} />
+    : view.name === 'custom'
+      ? <CustomOrder product={customProduct} onBack={() => go({ name: 'home' })} onDone={(o) => go({ name: 'success', order: o })} />
+      : view.name === 'product'
     ? <ProductDetails product={view.product} onBack={() => go({ name: 'home' })} onAdd={onAdd} />
     : view.name === 'cart'
       ? <Cart items={items} setQty={cart.setQty} remove={cart.remove} onCheckout={() => go({ name: 'checkout' })} onContinue={() => go({ name: 'home' })} />
@@ -402,10 +401,12 @@ function App() {
           ? <Success order={view.order} onHome={() => go({ name: 'home' })} />
           : <Home products={products} onOpen={(p) => go({ name: 'product', product: p })} onAdd={onAdd} userToken={userToken} onOpenAuth={() => setShowAuth(true)} onCreateCustom={() => go({ name: 'custom' })} />
 
+  const admin = <Admin onExit={() => go({ name: 'home' })} onUpdateProducts={setProducts} />
+
   return (
     <div className="app">
       <Seo {...seo} />
-      <Header count={cart.count} onCart={() => go({ name: 'cart' })} onHome={() => go({ name: 'home' })} onAdmin={() => go({ name: 'admin' })} onDev={() => go({ name: 'dev' })} user={user} onSignOut={logout} onOpenAuth={() => setShowAuth(true)} theme={theme} onToggleTheme={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))} />
+      <Header count={cart.count} onCart={() => go({ name: 'cart' })} onHome={() => go({ name: 'home' })} onAdmin={goAdmin} onDev={() => go({ name: 'dev' })} user={user} onSignOut={logout} onOpenAuth={() => setShowAuth(true)} theme={theme} onToggleTheme={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))} />
       <div className="layout">
         <Sidebar />
         <Routes>
@@ -413,6 +414,7 @@ function App() {
           <Route path="/contact" element={<div className="content"><Contact /></div>} />
           <Route path="/team" element={<div className="content"><Team /></div>} />
           <Route path="/report" element={<div className="content"><Report /></div>} />
+          <Route path="/adminlog" element={<div className="content">{admin}</div>} />
           <Route path="/" element={<div className="content">{store}</div>} />
           <Route path="*" element={<NotFound />} />
         </Routes>

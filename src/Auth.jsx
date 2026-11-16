@@ -30,7 +30,7 @@ function GoogleButton({ clientId, disabled, onCredential }) {
   }, [clientId])
 
   if (!clientId) {
-    return <p className="google-note">Google sign-in needs <code>GOOGLE_CLIENT_ID</code> set on the server. Sign up with your phone for now.</p>
+    return <p className="google-note">Google sign-in needs <code>GOOGLE_CLIENT_ID</code> set on the server. Use your phone number to sign in.</p>
   }
   return <div className={disabled ? 'google-btn disabled' : 'google-btn'} ref={ref} />
 }
@@ -45,8 +45,7 @@ function Field({ label, ...props }) {
 }
 
 export default function AuthPanel({ onClose, onAuth }) {
-  const [mode, setMode] = useState('signin') // signin | signup | reset | reset-confirm
-  const [name, setName] = useState('')
+  const [mode, setMode] = useState('signin') // signin | reset | reset-confirm
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -68,17 +67,6 @@ export default function AuthPanel({ onClose, onAuth }) {
     setBusy(true); setErr('')
     try {
       const d = await api('/auth/login', { method: 'POST', body: { phone, password } })
-      setUserToken(d.token)
-      onAuth(d.user)
-      onClose()
-    } catch (err) { fail(err) }
-  }
-
-  const submitSignup = async (e) => {
-    e.preventDefault()
-    setBusy(true); setErr('')
-    try {
-      const d = await api('/auth/signup', { method: 'POST', body: { name, phone, password } })
       setUserToken(d.token)
       onAuth(d.user)
       onClose()
@@ -125,7 +113,7 @@ export default function AuthPanel({ onClose, onAuth }) {
     <div className="auth-overlay" onClick={onClose}>
       <div className="auth-panel" onClick={(e) => e.stopPropagation()}>
         <button className="auth-close" onClick={onClose} aria-label="Close">✕</button>
-        <h2>{mode === 'signup' ? 'Create account' : mode === 'reset' || mode === 'reset-confirm' ? 'Reset password' : 'Sign in'}</h2>
+        <h2>{mode === 'reset' || mode === 'reset-confirm' ? 'Reset password' : 'Sign in'}</h2>
 
         {mode === 'signin' && (
           <form className="auth-form" onSubmit={submitSignin}>
@@ -134,16 +122,6 @@ export default function AuthPanel({ onClose, onAuth }) {
             {err && <p className="err">{err}</p>}
             <button className="btn add wide" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
             <button type="button" className="link" onClick={() => { setErr(''); setMsg(''); setMode('reset') }}>Forgot password?</button>
-          </form>
-        )}
-
-        {mode === 'signup' && (
-          <form className="auth-form" onSubmit={submitSignup}>
-            <Field label="Name" placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} required />
-            <Field label="Phone number" type="tel" placeholder="10-digit number" value={phone} onChange={(e) => setPhone(e.target.value)} required />
-            <Field label="Password" type="password" placeholder="At least 6 characters" value={password} onChange={(e) => setPassword(e.target.value)} required />
-            {err && <p className="err">{err}</p>}
-            <button className="btn add wide" disabled={busy}>{busy ? 'Creating…' : 'Create account'}</button>
           </form>
         )}
 
@@ -172,13 +150,11 @@ export default function AuthPanel({ onClose, onAuth }) {
         )}
         {mode === 'signin' && <GoogleButton clientId={clientId} disabled={busy} onCredential={googleSignin} />}
 
-        <p className="auth-switch">
-          {mode === 'signin' ? (
-            <>New here? <button type="button" className="link" onClick={() => { setErr(''); setMode('signup') }}>Create an account</button></>
-          ) : (
+        {(mode === 'reset' || mode === 'reset-confirm') && (
+          <p className="auth-switch">
             <>Already have an account? <button type="button" className="link" onClick={() => { setErr(''); setMsg(''); setMode('signin') }}>Sign in</button></>
-          )}
-        </p>
+          </p>
+        )}
       </div>
     </div>
   )
